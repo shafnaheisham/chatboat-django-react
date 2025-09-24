@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: chatapp
+      POSTGRES_USER: chatuser
+      POSTGRES_PASSWORD: chatpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chatapp-network
+  frontend:
+    develop:
+      watch:
+        - action: sync
+        - path:
+            ./frontend/
+          target: /frontend
+          ignore:
+            - node_modules
+            - build
+    build:
+      context: ../frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/
+    depends_on:
+      - backend
+    networks:
+      - chatapp-network
+  backend:
+    build: 
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/backend/backend    
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0:8000"
+    environment:
+      - DB_NAME=chatapp
+      - DB_USER=chatuser
+      - DB_PASSWORD=chatpassword
+      - DB_HOST=db
+      - DB_PORT=5432
+      - OPENAI_APIKEY=${OPENAI_APIKEY}
+    depends_on:
+      - db
